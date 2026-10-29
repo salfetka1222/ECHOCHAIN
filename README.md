@@ -27,3 +27,23 @@ The project is designed to run as an always-on Python process using Telegram lon
 - Keep the SQLite database file persistent on the hosting volume.
 - Back up the database before deploying changes that alter its schema.
 - This first version does not use external AI or paid APIs.
+
+
+## Official news channel
+
+The bot can publish project updates to the **ECHOCHAIN | Хроники** Telegram channel.
+
+1. Create the channel in Telegram.
+2. Add the ECHOCHAIN bot as an administrator with permission to post messages.
+3. Set `CHANNEL_CHAT_ID` to the channel's public username (for example, `@echochain_chronicles`) or numeric chat ID.
+4. Set `OWNER_ID` to the Telegram numeric user ID allowed to approve important posts.
+5. Start a private chat with the bot once so it can send approval requests to you.
+6. Set both values as host environment variables. Never commit real tokens or private credentials.
+
+New artifact and colony announcements are posted automatically. Every tenth-generation milestone and manual `/announce TEXT` announcement requires approval using the buttons sent to the owner. Pending posts are stored in SQLite.
+
+Useful owner commands:
+- `/channel_status` — check whether channel settings are present.
+- `/announce TEXT` — submit an important announcement for approval.
+
+The bot needs channel administrator permission to post messages. No paid service or external AI is required.
