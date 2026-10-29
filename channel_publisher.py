@@ -214,7 +214,7 @@ async def release(message: Message) -> None:
 
     published = await publish_channel_event(
         message.bot,
-        "🛠 НОВОСТИ РАЗРАБОТКИ\\n\\n" + text[:3500],
+        "🛠 НОВОСТИ РАЗРАБОТКИ\n\n" + text[:3500],
         important=False,
     )
     if published:
