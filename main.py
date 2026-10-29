@@ -18,7 +18,8 @@ from aiogram.types import Message
 
 from database.database import (
     add_event, create_artifact, create_colony, get_artifact, init_db,
-    list_artifacts, list_colonies, mutate_artifact, remember_user, stats,
+    list_artifacts, list_colonies, list_colony_artifacts, mutate_artifact,
+    remember_user, settle_artifact, stats,
 )
 from engine.world_engine import Genome, evolve
 from channel_publisher import router as channel_router
@@ -74,6 +75,8 @@ async def help_command(message: Message) -> None:
         "/mutate КОД — развить артефакт\n"
         "/colony — список колоний\n"
         "/colony create НАЗВАНИЕ — основать колонию\n"
+        "/colony settle КОД НАЗВАНИЕ — поселить свой артефакт\n"
+        "/colony artifacts НАЗВАНИЕ — список артефактов колонии\n"
         "/myid — узнать свой Telegram ID\n"
         "/channel_status — настройки канала (владелец)\n"
         "/release ТЕКСТ — опубликовать обычную новость (владелец)\n"
@@ -179,6 +182,55 @@ async def mutate(message: Message) -> None:
 async def colony(message: Message) -> None:
     user = message.from_user
     args = (message.text or "").partition(" ")[2].strip()
+    if args.lower().startswith("settle "):
+        if not user:
+            return
+        parts = args[7:].strip().split(maxsplit=1)
+        if len(parts) != 2 or not parts[1].strip():
+            await message.answer(
+                "Использование: /colony settle EC-ABC123 НАЗВАНИЕ",
+            )
+            return
+        remember_user(user.id, user.username)
+        status, colony_name = settle_artifact(parts[0], parts[1], user.id)
+        if status == "settled":
+            await message.answer(
+                f"🪐 Артефакт <code>{escape(parts[0].upper())}</code> поселён в колонии "
+                f"<b>{escape(colony_name or parts[1])}</b>.",
+                parse_mode="HTML",
+            )
+        elif status == "artifact_not_found":
+            await message.answer("Артефакт с таким кодом не найден.")
+        elif status == "colony_not_found":
+            await message.answer("Колония с таким названием не найдена.")
+        elif status == "not_owner":
+            await message.answer("Поселить можно только артефакт, созданный тобой.")
+        elif status == "not_member":
+            await message.answer("Сначала нужно стать участником этой колонии.")
+        else:
+            await message.answer("Этот артефакт уже поселён в одной из колоний.")
+        return
+
+    if args.lower().startswith("artifacts "):
+        colony_name = args[9:].strip()
+        if not colony_name:
+            await message.answer("Использование: /colony artifacts НАЗВАНИЕ")
+            return
+        artifacts = list_colony_artifacts(colony_name)
+        if not artifacts:
+            await message.answer(
+                "В этой колонии пока нет поселённых артефактов или колония не найдена."
+            )
+            return
+        lines = [f"🪐 <b>АРТЕФАКТЫ КОЛОНИИ: {escape(colony_name[:40])}</b>"]
+        lines.extend(
+            f"• <b>{escape(str(row['name']))}</b> — <code>{escape(str(row['code']))}</code> "
+            f"(поколение {row['generation']})"
+            for row in artifacts
+        )
+        await message.answer("\n".join(lines), parse_mode="HTML")
+        return
+
     if args.lower().startswith("create "):
         if not user:
             return
@@ -198,7 +250,11 @@ async def colony(message: Message) -> None:
         await message.answer("Колоний пока нет. Основать первую можно командой /colony create НАЗВАНИЕ")
         return
     lines = ["🪐 <b>ИЗВЕСТНЫЕ КОЛОНИИ</b>"]
-    lines.extend(f"• {escape(str(row['name']))} — участников: {row['members']}" for row in colonies)
+    lines.extend(
+        f"• {escape(str(row['name']))} — участников: {row['members']}, "
+        f"артефактов: {row['artifacts']}"
+        for row in colonies
+    )
     lines.append("\nОсновать колонию: /colony create НАЗВАНИЕ")
     await message.answer("\n".join(lines), parse_mode="HTML")
 
