@@ -15,7 +15,7 @@ from database.database import (
     list_artifacts, list_colonies, mutate_artifact, remember_user, stats,
 )
 from engine.world_engine import Genome, evolve
-from channel_publisher import router as channel_router, publish_channel_event
+from channel_publisher import router as channel_router
 
 dp = Dispatcher()
 dp.include_router(channel_router)
@@ -50,6 +50,12 @@ async def start(message: Message) -> None:
         "Use /help to explore the commands.",
         parse_mode="HTML",
     )
+
+
+@dp.message(Command("myid"))
+async def my_id(message: Message) -> None:
+    if message.from_user:
+        await message.answer(f"Твой Telegram ID: <code>{message.from_user.id}</code>", parse_mode="HTML")
 
 
 @dp.message(Command("help"))
