@@ -6,6 +6,12 @@ import string
 import json
 from html import escape
 
+from dotenv import load_dotenv
+
+# Load private server configuration from .env when present.
+# Environment variables supplied by the hosting panel take precedence.
+load_dotenv()
+
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
@@ -197,7 +203,7 @@ async def colony(message: Message) -> None:
 async def main() -> None:
     token = os.getenv("BOT_TOKEN", "").strip()
     if not token or token == "put_your_telegram_bot_token_here":
-        raise RuntimeError("BOT_TOKEN is missing. Set it as an environment variable in your host.")
+        raise RuntimeError("BOT_TOKEN is missing. Set it as an environment variable in your host or .env file.")
     init_db()
     bot = Bot(token=token)
     try:
