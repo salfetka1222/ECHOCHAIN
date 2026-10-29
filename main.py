@@ -4,6 +4,7 @@ import os
 import secrets
 import string
 import json
+from html import escape
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command, CommandStart
@@ -77,7 +78,7 @@ async def universe(message: Message) -> None:
     ]
     if recent:
         lines.append("\nRecent artifacts:")
-        lines.extend(f"• <code>{row['code']}</code> — {row['name']} (Gen {row['generation']})" for row in recent)
+        lines.extend(f"• <code>{escape(str(row['code']))}</code> — {escape(str(row['name']))} (Gen {row['generation']})" for row in recent)
     await message.answer("\n".join(lines), parse_mode="HTML")
 
 
@@ -94,7 +95,7 @@ async def create(message: Message) -> None:
     create_artifact(code, user.id, name, genome.to_dict())
     await message.answer(
         "✧ <b>ARTIFACT CREATED</b>\n"
-        f"Name: {name}\nCode: <code>{code}</code>\nGeneration: 0\n\n"
+        f"Name: {escape(name)}\nCode: <code>{escape(code)}</code>\nGeneration: 0\n\n"
         f"{format_genome(genome.to_dict())}\n\n"
         f"Inspect it with /artifact {code}",
         parse_mode="HTML",
@@ -115,8 +116,8 @@ async def artifact(message: Message) -> None:
     parent = row["parent_code"] or "ORIGIN"
     await message.answer(
         "✧ <b>ARTIFACT RECORD</b>\n"
-        f"Name: {row['name']}\nCode: <code>{row['code']}</code>\n"
-        f"Generation: {row['generation']}\nParent: <code>{parent}</code>\n\n"
+        f"Name: {escape(str(row['name']))}\nCode: <code>{escape(str(row['code']))}</code>\n"
+        f"Generation: {row['generation']}\nParent: <code>{escape(str(parent))}</code>\n\n"
         f"{format_genome(genome)}",
         parse_mode="HTML",
     )
@@ -145,7 +146,7 @@ async def mutate(message: Message) -> None:
     generation, name = result
     await message.answer(
         "⟁ <b>MUTATION RECORDED</b>\n"
-        f"Artifact: {name} (<code>{code}</code>)\n"
+        f"Artifact: {escape(name)} (<code>{escape(code)}</code>)\n"
         f"Generation: {generation}\n\n"
         f"{format_genome(next_genome.to_dict())}\n\n"
         "The outcome is determined by the system, not a vote.",
@@ -167,7 +168,7 @@ async def colony(message: Message) -> None:
         remember_user(user.id, user.username)
         _, created = create_colony(name, user.id)
         if created:
-            await message.answer(f"🪐 Colony founded: <b>{name[:40]}</b>", parse_mode="HTML")
+            await message.answer(f"🪐 Colony founded: <b>{escape(name[:40])}</b>", parse_mode="HTML")
         else:
             await message.answer("A colony with that name already exists.")
         return
@@ -176,7 +177,7 @@ async def colony(message: Message) -> None:
         await message.answer("No colonies yet. Found the first one with /colony create NAME")
         return
     lines = ["🪐 <b>KNOWN COLONIES</b>"]
-    lines.extend(f"• {row['name']} — {row['members']} member(s)" for row in colonies)
+    lines.extend(f"• {escape(str(row['name']))} — {row['members']} member(s)" for row in colonies)
     lines.append("\nCreate one with /colony create NAME")
     await message.answer("\n".join(lines), parse_mode="HTML")
 
