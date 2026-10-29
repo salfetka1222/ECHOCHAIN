@@ -68,7 +68,9 @@ async def help_command(message: Message) -> None:
         "/mutate CODE — evolve an artifact\n"
         "/colony — list colonies\n"
         "/colony create NAME — found a colony\n"
+        "/myid — show your Telegram ID\n"
         "/channel_status — channel configuration (owner)\n"
+        "/release TEXT — publish a routine development update (owner)\n"
         "/announce TEXT — submit an important post for approval (owner)",
         parse_mode="HTML",
     )
@@ -103,10 +105,6 @@ async def create(message: Message) -> None:
     code = code_for_artifact()
     genome = Genome()
     create_artifact(code, user.id, name, genome.to_dict())
-    await publish_channel_event(
-        message.bot,
-        f"✨ НОВЫЙ АРТЕФАКТ\nНазвание: {name}\nПоколение: 0\nКод: {code}",
-    )
     await message.answer(
         "✧ <b>ARTIFACT CREATED</b>\n"
         f"Name: {escape(name)}\nCode: <code>{escape(code)}</code>\nGeneration: 0\n\n"
@@ -159,11 +157,6 @@ async def mutate(message: Message) -> None:
         return
     generation, name = result
     if generation % 10 == 0:
-        await publish_channel_event(
-            message.bot,
-            f"⟁ ВАЖНАЯ ВЕХА ЭВОЛЮЦИИ\nАртефакт: {name} ({code})\nДостигнуто поколение: {generation}.",
-            important=True,
-        )
     await message.answer(
         "⟁ <b>MUTATION RECORDED</b>\n"
         f"Artifact: {escape(name)} (<code>{escape(code)}</code>)\n"
@@ -188,10 +181,6 @@ async def colony(message: Message) -> None:
         remember_user(user.id, user.username)
         _, created = create_colony(name, user.id)
         if created:
-            await publish_channel_event(
-                message.bot,
-                f"🪐 ОСНОВАНА НОВАЯ КОЛОНИЯ\nНазвание: {name[:40]}",
-            )
             await message.answer(f"🪐 Colony founded: <b>{escape(name[:40])}</b>", parse_mode="HTML")
         else:
             await message.answer("A colony with that name already exists.")
