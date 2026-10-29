@@ -44,6 +44,16 @@ class DatabaseTests(unittest.TestCase):
         self.assertFalse(second_created)
         self.assertEqual(database.list_colonies()[0]["members"], 1)
 
+    def test_pending_channel_posts_survive_database_reconnect(self):
+        post_id = database.add_pending_channel_post("Important update", 123)
+        row = database.get_pending_channel_post(post_id)
+        self.assertIsNotNone(row)
+        self.assertEqual(row["text"], "Important update")
+        self.assertEqual(row["created_by"], 123)
+
+        database.delete_pending_channel_post(post_id)
+        self.assertIsNone(database.get_pending_channel_post(post_id))
+
     def test_foreign_keys_require_known_creator(self):
         with self.assertRaises(Exception):
             database.create_artifact("EC-FAIL00", 999, "Invalid", {
