@@ -25,6 +25,8 @@ def verify_init_data(init_data: str, bot_token: str, max_age: int = 86400) -> di
         raise ValueError("Telegram authentication is missing")
 
     pairs = parse_qsl(init_data, keep_blank_values=True, strict_parsing=True)
+    if len({key for key, _value in pairs}) != len(pairs):
+        raise ValueError("Telegram authentication data contains duplicate fields")
     values = dict(pairs)
     received_hash = values.pop("hash", "")
     if not received_hash:
@@ -225,6 +227,10 @@ def create_app(bot_token: str) -> web.Application:
     app.router.add_get("/api/events", events)
 
     web_dir = os.path.join(os.path.dirname(__file__), "webapp")
-    app.router.add_get("/", lambda _request: web.FileResponse(os.path.join(web_dir, "index.html")))
+
+    async def index(_request):
+        return web.FileResponse(os.path.join(web_dir, "index.html"))
+
+    app.router.add_get("/", index)
     app.router.add_static("/assets/", os.path.join(web_dir, "assets"), show_index=False)
     return app
