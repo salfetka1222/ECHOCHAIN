@@ -195,3 +195,29 @@ async def handle_channel_approval(callback: CallbackQuery) -> None:
         f"✅ Публикация отправлена в канал. Сообщение: <code>{sent.message_id}</code>",
         parse_mode="HTML",
     )
+
+
+@router.message(Command("release"))
+async def release(message: Message) -> None:
+    owner_id = _owner_id()
+    if not message.from_user or owner_id is None or message.from_user.id != owner_id:
+        await message.answer("Эта команда доступна только владельцу проекта.")
+        return
+
+    text = (message.text or "").partition(" ")[2].strip()
+    if not text:
+        await message.answer("Использование: /release Текст обычной новости разработки")
+        return
+    if not _channel_id():
+        await message.answer("Сначала настрой CHANNEL_CHAT_ID на хостинге.")
+        return
+
+    published = await publish_channel_event(
+        message.bot,
+        "🛠 НОВОСТИ РАЗРАБОТКИ\\n\\n" + text[:3500],
+        important=False,
+    )
+    if published:
+        await message.answer("✅ Обычная новость опубликована в канале.")
+    else:
+        await message.answer("Не удалось опубликовать новость. Проверь настройки канала и права бота.")
