@@ -61,7 +61,9 @@ async def help_command(message: Message) -> None:
         "/artifact CODE — inspect an artifact\n"
         "/mutate CODE — evolve an artifact\n"
         "/colony — list colonies\n"
-        "/colony create NAME — found a colony",
+        "/colony create NAME — found a colony\n"
+        "/channel_status — channel configuration (owner)\n"
+        "/announce TEXT — submit an important post for approval (owner)",
         parse_mode="HTML",
     )
 
@@ -97,7 +99,7 @@ async def create(message: Message) -> None:
     create_artifact(code, user.id, name, genome.to_dict())
     await publish_channel_event(
         message.bot,
-        f"✨ НОВЫЙ АРТЕФАКТ\\nНазвание: {name}\\nПоколение: 0\\nКод: {code}",
+        f"✨ НОВЫЙ АРТЕФАКТ\nНазвание: {name}\nПоколение: 0\nКод: {code}",
     )
     await message.answer(
         "✧ <b>ARTIFACT CREATED</b>\n"
@@ -153,7 +155,7 @@ async def mutate(message: Message) -> None:
     if generation % 10 == 0:
         await publish_channel_event(
             message.bot,
-            f"⟁ ВАЖНАЯ ВЕХА ЭВОЛЮЦИИ\\nАртефакт: {name} ({code})\\nДостигнуто поколение: {generation}.",
+            f"⟁ ВАЖНАЯ ВЕХА ЭВОЛЮЦИИ\nАртефакт: {name} ({code})\nДостигнуто поколение: {generation}.",
             important=True,
         )
     await message.answer(
@@ -182,7 +184,7 @@ async def colony(message: Message) -> None:
         if created:
             await publish_channel_event(
                 message.bot,
-                f"🪐 ОСНОВАНА НОВАЯ КОЛОНИЯ\\nНазвание: {name[:40]}",
+                f"🪐 ОСНОВАНА НОВАЯ КОЛОНИЯ\nНазвание: {name[:40]}",
             )
             await message.answer(f"🪐 Colony founded: <b>{escape(name[:40])}</b>", parse_mode="HTML")
         else:
