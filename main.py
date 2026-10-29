@@ -1,4 +1,4 @@
-"""ECHOCHAIN Telegram bot entry point."""
+"""Точка входа Telegram-бота ECHOCHAIN."""
 import asyncio
 import os
 import secrets
@@ -8,8 +8,8 @@ from html import escape
 
 from dotenv import load_dotenv
 
-# Load private server configuration from .env when present.
-# Environment variables supplied by the hosting panel take precedence.
+# Загружаем настройки из .env, если файл существует.
+# Переменные окружения хостинга имеют приоритет.
 load_dotenv()
 
 from aiogram import Bot, Dispatcher
@@ -34,11 +34,11 @@ def code_for_artifact() -> str:
 
 def format_genome(genome: dict[str, int]) -> str:
     labels = {
-        "stability": "Stability",
-        "energy": "Energy",
-        "resonance": "Resonance",
-        "adaptation": "Adaptation",
-        "complexity": "Complexity",
+        "stability": "Устойчивость",
+        "energy": "Энергия",
+        "resonance": "Резонанс",
+        "adaptation": "Адаптация",
+        "complexity": "Сложность",
     }
     return "\n".join(f"• {labels[key]}: {value}/100" for key, value in genome.items())
 
@@ -51,9 +51,9 @@ async def start(message: Message) -> None:
         add_event("user_entered", user.id)
     await message.answer(
         "🜂 <b>ECHOCHAIN</b>\n"
-        "A shared evolving digital civilization.\n\n"
-        "Universe online. The first Echo is waiting.\n\n"
-        "Use /help to explore the commands.",
+        "Общая цифровая цивилизация, которая развивается вместе со своими участниками.\n\n"
+        "Вселенная активна. Первое Эхо ждёт своего создателя.\n\n"
+        "Используй /help, чтобы узнать доступные команды.",
         parse_mode="HTML",
     )
 
@@ -67,17 +67,17 @@ async def my_id(message: Message) -> None:
 @dp.message(Command("help"))
 async def help_command(message: Message) -> None:
     await message.answer(
-        "<b>ECHOCHAIN commands</b>\n"
-        "/universe — universe status\n"
-        "/create [name] — create an artifact\n"
-        "/artifact CODE — inspect an artifact\n"
-        "/mutate CODE — evolve an artifact\n"
-        "/colony — list colonies\n"
-        "/colony create NAME — found a colony\n"
-        "/myid — show your Telegram ID\n"
-        "/channel_status — channel configuration (owner)\n"
-        "/release TEXT — publish a routine development update (owner)\n"
-        "/announce TEXT — submit an important post for approval (owner)",
+        "<b>Команды ECHOCHAIN</b>\n"
+        "/universe — состояние вселенной\n"
+        "/create [название] — создать артефакт\n"
+        "/artifact КОД — посмотреть артефакт\n"
+        "/mutate КОД — развить артефакт\n"
+        "/colony — список колоний\n"
+        "/colony create НАЗВАНИЕ — основать колонию\n"
+        "/myid — узнать свой Telegram ID\n"
+        "/channel_status — настройки канала (владелец)\n"
+        "/release ТЕКСТ — опубликовать обычную новость (владелец)\n"
+        "/announce ТЕКСТ — отправить важную публикацию на подтверждение (владелец)",
         parse_mode="HTML",
     )
 
@@ -87,16 +87,19 @@ async def universe(message: Message) -> None:
     s = stats()
     recent = list_artifacts(3)
     lines = [
-        "🌌 <b>ECHOCHAIN UNIVERSE</b>",
-        "State: <b>ONLINE</b>",
-        f"Known users: {s['users']}",
-        f"Artifacts: {s['artifacts']}",
-        f"Colonies: {s['colonies']}",
-        f"Recorded echoes: {s['events']}",
+        "🌌 <b>ВСЕЛЕННАЯ ECHOCHAIN</b>",
+        "Состояние: <b>АКТИВНА</b>",
+        f"Известные участники: {s['users']}",
+        f"Артефакты: {s['artifacts']}",
+        f"Колонии: {s['colonies']}",
+        f"Записанные события: {s['events']}",
     ]
     if recent:
-        lines.append("\nRecent artifacts:")
-        lines.extend(f"• <code>{escape(str(row['code']))}</code> — {escape(str(row['name']))} (Gen {row['generation']})" for row in recent)
+        lines.append("\nНедавно созданные артефакты:")
+        lines.extend(
+            f"• <code>{escape(str(row['code']))}</code> — {escape(str(row['name']))} (поколение {row['generation']})"
+            for row in recent
+        )
     await message.answer("\n".join(lines), parse_mode="HTML")
 
 
@@ -106,16 +109,16 @@ async def create(message: Message) -> None:
     if not user:
         return
     remember_user(user.id, user.username)
-    name = (message.text or "").partition(" ")[2].strip() or "Unnamed Echo"
+    name = (message.text or "").partition(" ")[2].strip() or "Безымянное Эхо"
     name = " ".join(name.split())[:48]
     code = code_for_artifact()
     genome = Genome()
     create_artifact(code, user.id, name, genome.to_dict())
     await message.answer(
-        "✧ <b>ARTIFACT CREATED</b>\n"
-        f"Name: {escape(name)}\nCode: <code>{escape(code)}</code>\nGeneration: 0\n\n"
+        "✧ <b>АРТЕФАКТ СОЗДАН</b>\n"
+        f"Название: {escape(name)}\nКод: <code>{escape(code)}</code>\nПоколение: 0\n\n"
         f"{format_genome(genome.to_dict())}\n\n"
-        f"Inspect it with /artifact {code}",
+        f"Посмотреть артефакт: /artifact {code}",
         parse_mode="HTML",
     )
 
@@ -124,18 +127,18 @@ async def create(message: Message) -> None:
 async def artifact(message: Message) -> None:
     code = (message.text or "").partition(" ")[2].strip().upper()
     if not code:
-        await message.answer("Usage: /artifact EC-ABC123")
+        await message.answer("Использование: /artifact EC-ABC123")
         return
     row = get_artifact(code)
     if not row:
-        await message.answer("No artifact found with that code.")
+        await message.answer("Артефакт с таким кодом не найден.")
         return
     genome = json.loads(row["genome_json"])
-    parent = row["parent_code"] or "ORIGIN"
+    parent = row["parent_code"] or "ИСТОК"
     await message.answer(
-        "✧ <b>ARTIFACT RECORD</b>\n"
-        f"Name: {escape(str(row['name']))}\nCode: <code>{escape(str(row['code']))}</code>\n"
-        f"Generation: {row['generation']}\nParent: <code>{escape(str(parent))}</code>\n\n"
+        "✧ <b>ЗАПИСЬ ОБ АРТЕФАКТЕ</b>\n"
+        f"Название: {escape(str(row['name']))}\nКод: <code>{escape(str(row['code']))}</code>\n"
+        f"Поколение: {row['generation']}\nРодитель: <code>{escape(str(parent))}</code>\n\n"
         f"{format_genome(genome)}",
         parse_mode="HTML",
     )
@@ -148,26 +151,26 @@ async def mutate(message: Message) -> None:
     if not user:
         return
     if not code:
-        await message.answer("Usage: /mutate EC-ABC123")
+        await message.answer("Использование: /mutate EC-ABC123")
         return
     row = get_artifact(code)
     if not row:
-        await message.answer("No artifact found with that code.")
+        await message.answer("Артефакт с таким кодом не найден.")
         return
     parent_genome = Genome.from_json(row["genome_json"])
     next_generation = int(row["generation"]) + 1
     next_genome = evolve(parent_genome, code, next_generation)
     result = mutate_artifact(code, next_genome.to_dict(), user.id)
     if result is None:
-        await message.answer("The artifact changed before mutation could be saved. Try again.")
+        await message.answer("Артефакт изменился до сохранения мутации. Попробуй ещё раз.")
         return
     generation, name = result
     await message.answer(
-        "⟁ <b>MUTATION RECORDED</b>\n"
-        f"Artifact: {escape(name)} (<code>{escape(code)}</code>)\n"
-        f"Generation: {generation}\n\n"
+        "⟁ <b>МУТАЦИЯ ЗАПИСАНА</b>\n"
+        f"Артефакт: {escape(name)} (<code>{escape(code)}</code>)\n"
+        f"Поколение: {generation}\n\n"
         f"{format_genome(next_genome.to_dict())}\n\n"
-        "The outcome is determined by the system, not a vote.",
+        "Результат определяет система, а не голосование.",
         parse_mode="HTML",
     )
 
@@ -181,29 +184,29 @@ async def colony(message: Message) -> None:
             return
         name = args[7:].strip()
         if not name:
-            await message.answer("Usage: /colony create NAME")
+            await message.answer("Использование: /colony create НАЗВАНИЕ")
             return
         remember_user(user.id, user.username)
         _, created = create_colony(name, user.id)
         if created:
-            await message.answer(f"🪐 Colony founded: <b>{escape(name[:40])}</b>", parse_mode="HTML")
+            await message.answer(f"🪐 Колония основана: <b>{escape(name[:40])}</b>", parse_mode="HTML")
         else:
-            await message.answer("A colony with that name already exists.")
+            await message.answer("Колония с таким названием уже существует.")
         return
     colonies = list_colonies()
     if not colonies:
-        await message.answer("No colonies yet. Found the first one with /colony create NAME")
+        await message.answer("Колоний пока нет. Основать первую можно командой /colony create НАЗВАНИЕ")
         return
-    lines = ["🪐 <b>KNOWN COLONIES</b>"]
-    lines.extend(f"• {escape(str(row['name']))} — {row['members']} member(s)" for row in colonies)
-    lines.append("\nCreate one with /colony create NAME")
+    lines = ["🪐 <b>ИЗВЕСТНЫЕ КОЛОНИИ</b>"]
+    lines.extend(f"• {escape(str(row['name']))} — участников: {row['members']}" for row in colonies)
+    lines.append("\nОсновать колонию: /colony create НАЗВАНИЕ")
     await message.answer("\n".join(lines), parse_mode="HTML")
 
 
 async def main() -> None:
     token = os.getenv("BOT_TOKEN", "").strip()
     if not token or token == "put_your_telegram_bot_token_here":
-        raise RuntimeError("BOT_TOKEN is missing. Set it as an environment variable in your host or .env file.")
+        raise RuntimeError("Не задан BOT_TOKEN. Добавь его в переменные хостинга или в файл .env.")
     init_db()
     bot = Bot(token=token)
     try:
