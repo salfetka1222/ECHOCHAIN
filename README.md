@@ -53,21 +53,19 @@ The bot needs channel administrator permission to post messages. No paid service
 
 The Mini App adds four sections: Universe, Artifacts, Colonies, and Chronicle. It uses the same SQLite database as the bot and authenticates requests with Telegram WebApp `initData` signature validation.
 
-### Hosting layout
+### Planned hosting layout
 
 - The Telegram bot, HTTP API, and persistent SQLite database stay on Altare.
-- The static Mini App is hosted separately on Vercel with HTTPS.
-- `vercel.json` serves the static files from `webapp/` and proxies `/api/*` requests to the Altare API. API responses are not configured for CDN caching.
-- The Vercel URL is the URL to set as `WEBAPP_URL` on Altare, after the preview has been verified.
+- The static Mini App is hosted separately on a free HTTPS static host.
+- API requests must pass through an encrypted HTTPS tunnel to Altare. A plain HTTP reverse-proxy origin is not acceptable for Telegram authentication data.
+- The Vercel routing configuration will be added only after the secure HTTPS API endpoint is available and tested.
 
-### Deployment checklist
+### Safe setup order
 
-1. Import this repository into Vercel and select the `feature/mini-app-mvp` branch for the first preview.
-2. Keep the project root at the repository root. The `vercel.json` file sets `webapp` as the static output directory.
-3. Open the Vercel preview URL and check `/health`. It should return JSON with service `ECHOCHAIN` and status `ok`.
-4. Open the Mini App from Telegram only after the health check and API connection have been verified.
-5. Only then set `WEBAPP_URL` on Altare to the Vercel HTTPS URL and restart the bot.
-
-The Altare API must be reachable at the origin configured in `vercel.json` on the allocated port. If `/health` does not respond, do not change the live bot or database; first verify the Altare port mapping and the HTTP server's `PORT` setting.
+1. Verify that the Altare HTTP server responds at its allocated port using the non-sensitive `/health` endpoint.
+2. Set up an encrypted HTTPS route to the Altare API without changing the SQLite path or replacing `.env`.
+3. Configure the static host to serve `webapp/` and proxy only `/api/*` to that HTTPS API endpoint.
+4. Test Telegram `initData` authentication and the Mini App preview.
+5. Only then set `WEBAPP_URL` on Altare to the static host's HTTPS URL and restart the bot.
 
 Until `WEBAPP_URL` is configured, the bot continues to work with its existing commands and does not show the Mini App launch button. Never replace the existing `.env` or `data/echochain.sqlite3` when updating code.
