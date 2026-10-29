@@ -156,7 +156,6 @@ async def mutate(message: Message) -> None:
         await message.answer("The artifact changed before mutation could be saved. Try again.")
         return
     generation, name = result
-    if generation % 10 == 0:
     await message.answer(
         "⟁ <b>MUTATION RECORDED</b>\n"
         f"Artifact: {escape(name)} (<code>{escape(code)}</code>)\n"
