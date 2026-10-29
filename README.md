@@ -20,7 +20,7 @@ ECHOCHAIN is a persistent shared universe where artifacts evolve, colonies form,
 The database is stored at `data/echochain.sqlite3` by default. Set `ECHOCHAIN_DB_PATH` to change the location.
 
 ## Hosting
-The project is designed to run as an always-on Python process using Telegram long polling. No public HTTP port is required for the initial bot.
+The project runs as an always-on Python process using Telegram long polling and an aiohttp HTTP server. The HTTP server provides the health endpoint and serves the Mini App.
 
 ## Safety and operations
 - Never commit a real bot token.
@@ -47,3 +47,25 @@ Useful owner commands:
 - `/announce TEXT` — submit an important announcement for approval.
 
 The bot needs channel administrator permission to post messages. No paid service or external AI is required.
+
+
+## Telegram Mini App (first version)
+
+The Mini App adds four sections: Universe, Artifacts, Colonies, and Chronicle. It uses the same SQLite database as the bot and authenticates requests with Telegram WebApp `initData` signature validation.
+
+### Planned hosting layout
+
+- The Telegram bot, HTTP API, and persistent SQLite database stay on Altare.
+- The static Mini App is hosted separately on a free HTTPS static host.
+- API requests must pass through an encrypted HTTPS tunnel to Altare. A plain HTTP reverse-proxy origin is not acceptable for Telegram authentication data.
+- The Vercel routing configuration will be added only after the secure HTTPS API endpoint is available and tested.
+
+### Safe setup order
+
+1. Verify that the Altare HTTP server responds at its allocated port using the non-sensitive `/health` endpoint.
+2. Set up an encrypted HTTPS route to the Altare API without changing the SQLite path or replacing `.env`.
+3. Configure the static host to serve `webapp/` and proxy only `/api/*` to that HTTPS API endpoint.
+4. Test Telegram `initData` authentication and the Mini App preview.
+5. Only then set `WEBAPP_URL` on Altare to the static host's HTTPS URL and restart the bot.
+
+Until `WEBAPP_URL` is configured, the bot continues to work with its existing commands and does not show the Mini App launch button. Never replace the existing `.env` or `data/echochain.sqlite3` when updating code.

@@ -14,7 +14,10 @@ load_dotenv()
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command, CommandStart
-from aiogram.types import Message
+from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, WebAppInfo
+from aiohttp import web
+
+from api import create_app
 
 from database.database import (
     add_event, create_artifact, create_colony, get_artifact, init_db,
@@ -50,12 +53,22 @@ async def start(message: Message) -> None:
     if user:
         remember_user(user.id, user.username)
         add_event("user_entered", user.id)
+    webapp_url = os.getenv("WEBAPP_URL", "").strip()
+    keyboard = None
+    if webapp_url:
+        if not webapp_url.startswith("https://"):
+            raise RuntimeError("WEBAPP_URL должен начинаться с https://")
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="Открыть ECHOCHAIN", web_app=WebAppInfo(url=webapp_url))]],
+            resize_keyboard=True,
+        )
     await message.answer(
         "🜂 <b>ECHOCHAIN</b>\n"
         "Общая цифровая цивилизация, которая развивается вместе со своими участниками.\n\n"
         "Вселенная активна. Первое Эхо ждёт своего создателя.\n\n"
         "Используй /help, чтобы узнать доступные команды.",
         parse_mode="HTML",
+        reply_markup=keyboard,
     )
 
 
@@ -265,9 +278,18 @@ async def main() -> None:
         raise RuntimeError("Не задан BOT_TOKEN. Добавь его в переменные хостинга или в файл .env.")
     init_db()
     bot = Bot(token=token)
+    app = create_app(token)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8080"))
+    site = web.TCPSite(runner, host, port)
+    await site.start()
+    print(f"ECHOCHAIN HTTP server listening on {host}:{port}")
     try:
         await dp.start_polling(bot)
     finally:
+        await runner.cleanup()
         await bot.session.close()
 
 

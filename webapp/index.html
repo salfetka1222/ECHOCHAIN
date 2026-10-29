@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#090d16">
+  <title>ECHOCHAIN</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script defer src="/assets/app.js"></script>
+</head>
+<body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand-mark">E</div>
+      <div><div class="eyebrow">SHARED DIGITAL CIVILIZATION</div><h1>ECHOCHAIN</h1></div>
+      <div class="connection" id="connection"><span></span> ONLINE</div>
+    </header>
+    <section class="welcome">
+      <div class="eyebrow">ПРОСТРАНСТВО ЭВОЛЮЦИИ</div>
+      <h2 id="greeting">Вселенная<br><em>помнит всё.</em></h2>
+      <p>Создавай Эхо, развивай их и оставляй след в общей истории.</p>
+    </section>
+    <nav class="tabs" aria-label="Разделы">
+      <button class="tab active" data-page="universe">Вселенная</button>
+      <button class="tab" data-page="artifacts">Артефакты</button>
+      <button class="tab" data-page="colonies">Колонии</button>
+      <button class="tab" data-page="chronicle">Летопись</button>
+    </nav>
+    <div id="notice" class="notice hidden" role="status"></div>
+    <section id="page-universe" class="page active">
+      <div class="section-heading"><div><div class="eyebrow">СЕЙЧАС</div><h3>Состояние мира</h3></div><span class="live-dot">АКТИВНА</span></div>
+      <div id="stats" class="stats-grid"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+      <div class="section-heading compact"><div><div class="eyebrow">СЛЕДЫ ВО ВСЕЛЕННОЙ</div><h3>Новые артефакты</h3></div></div>
+      <div id="recent" class="stack"></div>
+    </section>
+    <section id="page-artifacts" class="page">
+      <div class="section-heading"><div><div class="eyebrow">ТВОИ СОЗДАНИЯ</div><h3>Артефакты</h3></div><button class="primary small" id="new-artifact">＋ Создать</button></div>
+      <div id="artifacts-list" class="stack"></div>
+    </section>
+    <section id="page-colonies" class="page">
+      <div class="section-heading"><div><div class="eyebrow">СООБЩЕСТВА</div><h3>Колонии</h3></div><button class="primary small" id="new-colony">＋ Основать</button></div>
+      <div id="colonies-list" class="stack"></div>
+    </section>
+    <section id="page-chronicle" class="page">
+      <div class="section-heading"><div><div class="eyebrow">ИСТОРИЯ МИРА</div><h3>Летопись</h3></div></div>
+      <div id="events-list" class="timeline"></div>
+    </section>
+    <footer><span>ECHОCHAIN · v0.1</span><span>МИР ПРОДОЛЖАЕТСЯ</span></footer>
+  </main>
+
+  <dialog id="artifact-dialog" class="dialog">
+    <form method="dialog" id="artifact-form">
+      <div class="eyebrow">НОВОЕ СОЗДАНИЕ</div><h3>Создать артефакт</h3>
+      <label for="artifact-name">Название</label><input id="artifact-name" maxlength="48" placeholder="Например, Первое Эхо">
+      <div class="dialog-actions"><button class="secondary" value="cancel">Отмена</button><button class="primary" id="artifact-submit" value="default">Создать</button></div>
+    </form>
+  </dialog>
+  <dialog id="colony-dialog" class="dialog">
+    <form method="dialog" id="colony-form">
+      <div class="eyebrow">НОВОЕ СООБЩЕСТВО</div><h3>Основать колонию</h3>
+      <label for="colony-name">Название</label><input id="colony-name" maxlength="40" placeholder="Например, Горизонт">
+      <div class="dialog-actions"><button class="secondary" value="cancel">Отмена</button><button class="primary" id="colony-submit" value="default">Основать</button></div>
+    </form>
+  </dialog>
+  <dialog id="settle-dialog" class="dialog">
+    <form method="dialog" id="settle-form">
+      <div class="eyebrow">РАСШИРЕНИЕ КОЛОНИИ</div><h3>Поселить артефакт</h3>
+      <label for="settle-code">Код твоего артефакта</label><input id="settle-code" maxlength="9" placeholder="EC-ABC123">
+      <input id="settle-colony" type="hidden">
+      <div class="dialog-actions"><button class="secondary" value="cancel">Отмена</button><button class="primary" id="settle-submit" value="default">Поселить</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

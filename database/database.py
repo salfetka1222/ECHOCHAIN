@@ -260,3 +260,43 @@ def get_pending_channel_post(post_id: int) -> sqlite3.Row | None:
 def delete_pending_channel_post(post_id: int) -> None:
     with connect() as conn:
         conn.execute("DELETE FROM channel_pending_posts WHERE id = ?", (post_id,))
+
+
+
+def list_user_artifacts(user_id: int, limit: int = 50) -> list[sqlite3.Row]:
+    with connect() as conn:
+        return list(conn.execute(
+            "SELECT * FROM artifacts WHERE creator_id = ? ORDER BY created_at DESC LIMIT ?",
+            (user_id, limit),
+        ).fetchall())
+
+
+def recent_events(limit: int = 30) -> list[sqlite3.Row]:
+    with connect() as conn:
+        return list(conn.execute(
+            "SELECT id, event_type, actor_id, artifact_code, payload_json, created_at "
+            "FROM events ORDER BY id DESC LIMIT ?", (limit,)
+        ).fetchall())
+
+
+def get_colony(colony_name: str) -> sqlite3.Row | None:
+    clean_name = " ".join(colony_name.split())
+    with connect() as conn:
+        return conn.execute(
+            "SELECT c.id, c.name, c.founder_id, c.created_at, "
+            "(SELECT COUNT(*) FROM colony_members m WHERE m.colony_id=c.id) AS members, "
+            "(SELECT COUNT(*) FROM colony_artifacts ca WHERE ca.colony_id=c.id) AS artifacts "
+            "FROM colonies c WHERE c.name = ? COLLATE NOCASE",
+            (clean_name,),
+        ).fetchone()
+
+
+def is_colony_member(colony_name: str, user_id: int) -> bool:
+    colony = get_colony(colony_name)
+    if colony is None:
+        return False
+    with connect() as conn:
+        return conn.execute(
+            "SELECT 1 FROM colony_members WHERE colony_id = ? AND user_id = ?",
+            (int(colony["id"]), user_id),
+        ).fetchone() is not None

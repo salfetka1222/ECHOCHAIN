@@ -21,4 +21,4 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
       - name: Compile Python files
-        run: python -m compileall -q main.py database engine tests
+        run: python -m compileall -q main.py api.py database engine tests
