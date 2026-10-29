@@ -40,7 +40,7 @@ The bot can publish project updates to the **ECHOCHAIN | Хроники** Telegr
 5. Start a private chat with the bot once so it can send approval requests to you.
 6. Set both values as host environment variables. Never commit real tokens or private credentials.
 
-New artifact and colony announcements are posted automatically. Every tenth-generation milestone and manual `/announce TEXT` announcement requires approval using the buttons sent to the owner. Pending posts are stored in SQLite.
+Use `/release TEXT` in a private chat with the bot to publish a routine development update immediately. Use `/announce TEXT` to create an important announcement that requires owner approval. Pending important posts are stored in SQLite. Gameplay activity is not automatically sent to the news channel, keeping the feed focused on development news.
 
 Useful owner commands:
 - `/channel_status` — check whether channel settings are present.
