@@ -44,6 +44,41 @@ class DatabaseTests(unittest.TestCase):
         self.assertFalse(second_created)
         self.assertEqual(database.list_colonies()[0]["members"], 1)
 
+    def test_artifact_can_be_settled_in_founders_colony(self):
+        database.remember_user(123, "tester")
+        database.create_colony("First Colony", 123)
+        database.create_artifact("EC-SETTLE1", 123, "Settled Echo", {
+            "stability": 50, "energy": 50, "resonance": 20,
+            "adaptation": 25, "complexity": 10,
+        })
+
+        status, colony_name = database.settle_artifact(
+            "EC-SETTLE1", "first colony", 123
+        )
+        self.assertEqual((status, colony_name), ("settled", "First Colony"))
+
+        artifacts = database.list_colony_artifacts("FIRST COLONY")
+        self.assertEqual(len(artifacts), 1)
+        self.assertEqual(artifacts[0]["code"], "EC-SETTLE1")
+        self.assertEqual(database.list_colonies()[0]["artifacts"], 1)
+
+        duplicate_status, _ = database.settle_artifact(
+            "EC-SETTLE1", "First Colony", 123
+        )
+        self.assertEqual(duplicate_status, "already_settled")
+
+    def test_only_creator_can_settle_an_artifact(self):
+        database.remember_user(123, "creator")
+        database.remember_user(456, "other")
+        database.create_colony("First Colony", 123)
+        database.create_artifact("EC-OWNR001", 123, "Owned Echo", {
+            "stability": 50, "energy": 50, "resonance": 20,
+            "adaptation": 25, "complexity": 10,
+        })
+
+        status, _ = database.settle_artifact("EC-OWNR001", "First Colony", 456)
+        self.assertEqual(status, "not_owner")
+
     def test_pending_channel_posts_survive_database_reconnect(self):
         post_id = database.add_pending_channel_post("Important update", 123)
         row = database.get_pending_channel_post(post_id)
