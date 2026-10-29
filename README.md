@@ -20,7 +20,7 @@ ECHOCHAIN is a persistent shared universe where artifacts evolve, colonies form,
 The database is stored at `data/echochain.sqlite3` by default. Set `ECHOCHAIN_DB_PATH` to change the location.
 
 ## Hosting
-The project is designed to run as an always-on Python process using Telegram long polling. No public HTTP port is required for the initial bot.
+The project runs as an always-on Python process using Telegram long polling and an aiohttp HTTP server. The HTTP server provides the health endpoint and serves the Mini App.
 
 ## Safety and operations
 - Never commit a real bot token.
@@ -47,3 +47,17 @@ Useful owner commands:
 - `/announce TEXT` — submit an important announcement for approval.
 
 The bot needs channel administrator permission to post messages. No paid service or external AI is required.
+
+
+## Telegram Mini App (first version)
+
+The Mini App adds four sections: Universe, Artifacts, Colonies, and Chronicle. It uses the same SQLite database as the bot and authenticates requests with Telegram WebApp `initData` signature validation.
+
+To enable its launch button:
+1. Host the repository on a Python service with a public HTTPS address.
+2. Keep the existing persistent SQLite volume and set `ECHOCHAIN_DB_PATH` to its current database path.
+3. Set `WEBAPP_URL` to the public HTTPS address serving this app.
+4. Set `HOST=0.0.0.0` and `PORT` to the port assigned by the hosting provider.
+5. Restart the service, then send `/start` to the bot.
+
+Until `WEBAPP_URL` is configured, the bot continues to work with its existing commands and does not show the Mini App launch button. Never replace the existing `.env` or `data/echochain.sqlite3` when updating code.
