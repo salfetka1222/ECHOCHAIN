@@ -53,11 +53,21 @@ The bot needs channel administrator permission to post messages. No paid service
 
 The Mini App adds four sections: Universe, Artifacts, Colonies, and Chronicle. It uses the same SQLite database as the bot and authenticates requests with Telegram WebApp `initData` signature validation.
 
-To enable its launch button:
-1. Host the repository on a Python service with a public HTTPS address.
-2. Keep the existing persistent SQLite volume and set `ECHOCHAIN_DB_PATH` to its current database path.
-3. Set `WEBAPP_URL` to the public HTTPS address serving this app.
-4. Set `HOST=0.0.0.0` and `PORT` to the port assigned by the hosting provider.
-5. Restart the service, then send `/start` to the bot.
+### Hosting layout
+
+- The Telegram bot, HTTP API, and persistent SQLite database stay on Altare.
+- The static Mini App is hosted separately on Vercel with HTTPS.
+- `vercel.json` serves the static files from `webapp/` and proxies `/api/*` requests to the Altare API. API responses are not configured for CDN caching.
+- The Vercel URL is the URL to set as `WEBAPP_URL` on Altare, after the preview has been verified.
+
+### Deployment checklist
+
+1. Import this repository into Vercel and select the `feature/mini-app-mvp` branch for the first preview.
+2. Keep the project root at the repository root. The `vercel.json` file sets `webapp` as the static output directory.
+3. Open the Vercel preview URL and check `/health`. It should return JSON with service `ECHOCHAIN` and status `ok`.
+4. Open the Mini App from Telegram only after the health check and API connection have been verified.
+5. Only then set `WEBAPP_URL` on Altare to the Vercel HTTPS URL and restart the bot.
+
+The Altare API must be reachable at the origin configured in `vercel.json` on the allocated port. If `/health` does not respond, do not change the live bot or database; first verify the Altare port mapping and the HTTP server's `PORT` setting.
 
 Until `WEBAPP_URL` is configured, the bot continues to work with its existing commands and does not show the Mini App launch button. Never replace the existing `.env` or `data/echochain.sqlite3` when updating code.
