@@ -60,6 +60,12 @@ def init_db() -> None:
             payload_json TEXT NOT NULL DEFAULT '{}',
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS channel_pending_posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            text TEXT NOT NULL,
+            created_by INTEGER NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE INDEX IF NOT EXISTS idx_artifacts_creator ON artifacts(creator_id);
         CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);
         """)
@@ -158,3 +164,24 @@ def stats() -> dict[str, int]:
             "events": conn.execute("SELECT COUNT(*) FROM events").fetchone()[0],
             "users": conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
         }
+
+
+def add_pending_channel_post(text: str, created_by: int) -> int:
+    with connect() as conn:
+        cursor = conn.execute(
+            "INSERT INTO channel_pending_posts(text, created_by) VALUES(?, ?)",
+            (text, created_by),
+        )
+        return int(cursor.lastrowid)
+
+
+def get_pending_channel_post(post_id: int) -> sqlite3.Row | None:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT * FROM channel_pending_posts WHERE id = ?", (post_id,)
+        ).fetchone()
+
+
+def delete_pending_channel_post(post_id: int) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM channel_pending_posts WHERE id = ?", (post_id,))
