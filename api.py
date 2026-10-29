@@ -11,8 +11,8 @@ from urllib.parse import parse_qsl
 from aiohttp import web
 
 from database.database import (
-    add_event, create_artifact, create_colony, get_artifact, get_colony,
-    is_colony_member, list_artifacts, list_colonies, list_colony_artifacts,
+    create_artifact, create_colony, get_artifact, get_colony,
+    list_artifacts, list_colonies, list_colony_artifacts,
     list_user_artifacts, mutate_artifact, recent_events, remember_user,
     settle_artifact, stats,
 )
@@ -31,7 +31,7 @@ def verify_init_data(init_data: str, bot_token: str, max_age: int = 86400) -> di
         raise ValueError("Telegram signature is missing")
 
     check_string = "\n".join(f"{key}={value}" for key, value in sorted(values.items()))
-    secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
+    secret_key = hmac.new(bot_token.encode(), b"WebAppData", hashlib.sha256).digest()
     expected_hash = hmac.new(secret_key, check_string.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected_hash, received_hash):
         raise ValueError("Telegram signature is invalid")
