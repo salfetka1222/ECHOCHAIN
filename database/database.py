@@ -52,6 +52,15 @@ def init_db() -> None:
             FOREIGN KEY (colony_id) REFERENCES colonies(id),
             FOREIGN KEY (user_id) REFERENCES users(telegram_id)
         );
+        CREATE TABLE IF NOT EXISTS colony_artifacts (
+            artifact_code TEXT PRIMARY KEY,
+            colony_id INTEGER NOT NULL,
+            added_by INTEGER NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (artifact_code) REFERENCES artifacts(code),
+            FOREIGN KEY (colony_id) REFERENCES colonies(id),
+            FOREIGN KEY (added_by) REFERENCES users(telegram_id)
+        );
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             event_type TEXT NOT NULL,
@@ -67,6 +76,7 @@ def init_db() -> None:
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
         CREATE INDEX IF NOT EXISTS idx_artifacts_creator ON artifacts(creator_id);
+        CREATE INDEX IF NOT EXISTS idx_colony_artifacts_colony ON colony_artifacts(colony_id);
         CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);
         """)
 
@@ -150,9 +160,74 @@ def create_colony(name: str, founder_id: int) -> tuple[int, bool]:
 def list_colonies(limit: int = 10) -> list[sqlite3.Row]:
     with connect() as conn:
         return list(conn.execute(
-            "SELECT c.name, COUNT(m.user_id) AS members FROM colonies c "
+            "SELECT c.name, COUNT(DISTINCT m.user_id) AS members, "
+            "COUNT(DISTINCT ca.artifact_code) AS artifacts "
+            "FROM colonies c "
             "LEFT JOIN colony_members m ON m.colony_id=c.id "
+            "LEFT JOIN colony_artifacts ca ON ca.colony_id=c.id "
             "GROUP BY c.id ORDER BY c.created_at DESC LIMIT ?", (limit,)
+        ).fetchall())
+
+
+def settle_artifact(code: str, colony_name: str, user_id: int) -> tuple[str, str | None]:
+    """Attach a user's own artifact to a colony they belong to."""
+    normalized_code = code.strip().upper()
+    clean_name = " ".join(colony_name.split())[:40]
+    with connect() as conn:
+        artifact = conn.execute(
+            "SELECT code, creator_id, name FROM artifacts WHERE code = ?",
+            (normalized_code,),
+        ).fetchone()
+        if artifact is None:
+            return "artifact_not_found", None
+
+        colony = conn.execute(
+            "SELECT id, name FROM colonies WHERE name = ? COLLATE NOCASE",
+            (clean_name,),
+        ).fetchone()
+        if colony is None:
+            return "colony_not_found", None
+
+        if int(artifact["creator_id"]) != user_id:
+            return "not_owner", str(colony["name"])
+
+        member = conn.execute(
+            "SELECT 1 FROM colony_members WHERE colony_id = ? AND user_id = ?",
+            (int(colony["id"]), user_id),
+        ).fetchone()
+        if member is None:
+            return "not_member", str(colony["name"])
+
+        existing = conn.execute(
+            "SELECT colony_id FROM colony_artifacts WHERE artifact_code = ?",
+            (normalized_code,),
+        ).fetchone()
+        if existing is not None:
+            return "already_settled", str(colony["name"])
+
+        conn.execute(
+            "INSERT INTO colony_artifacts(artifact_code, colony_id, added_by) VALUES(?, ?, ?)",
+            (normalized_code, int(colony["id"]), user_id),
+        )
+        conn.execute(
+            "INSERT INTO events(event_type, actor_id, artifact_code, payload_json) VALUES(?, ?, ?, ?)",
+            ("artifact_settled", user_id, normalized_code,
+             json.dumps({"colony": str(colony["name"])}, ensure_ascii=False, sort_keys=True)),
+        )
+        return "settled", str(colony["name"])
+
+
+def list_colony_artifacts(colony_name: str) -> list[sqlite3.Row]:
+    clean_name = " ".join(colony_name.split())
+    with connect() as conn:
+        return list(conn.execute(
+            "SELECT a.code, a.name, a.generation, ca.created_at AS settled_at "
+            "FROM colony_artifacts ca "
+            "JOIN artifacts a ON a.code = ca.artifact_code "
+            "JOIN colonies c ON c.id = ca.colony_id "
+            "WHERE c.name = ? COLLATE NOCASE "
+            "ORDER BY ca.created_at ASC, a.code ASC",
+            (clean_name,),
         ).fetchall())
 
 
