@@ -6,6 +6,7 @@ import os
 import secrets
 import string
 import time
+from collections import defaultdict, deque
 from urllib.parse import parse_qsl
 
 from aiohttp import web
@@ -92,6 +93,33 @@ def create_app(bot_token: str) -> web.Application:
             return web.json_response({"error": "Внутренняя ошибка сервера."}, status=500)
 
     app.middlewares.append(errors)
+
+    # Per-user rolling window: maximum 10 API requests in 30 seconds.
+    request_windows = defaultdict(deque)
+
+    @web.middleware
+    async def rate_limit(request, handler):
+        if request.path.startswith("/api/"):
+            raw = request.headers.get("X-Telegram-Init-Data", "")
+            try:
+                identity = str(verify_init_data(raw, bot_token)["id"])
+            except ValueError:
+                identity = request.remote or "unknown"
+            now = time.monotonic()
+            window = request_windows[identity]
+            while window and now - window[0] >= 30:
+                window.popleft()
+            if len(window) >= 10:
+                retry = max(1, int(30 - (now - window[0])))
+                raise web.HTTPTooManyRequests(
+                    text=json.dumps({"error": "Слишком много запросов. Подожди немного."}, ensure_ascii=False),
+                    content_type="application/json",
+                    headers={"Retry-After": str(retry)},
+                )
+            window.append(now)
+        return await handler(request)
+
+    app.middlewares.append(rate_limit)
 
     def current_user(request):
         raw = request.headers.get("X-Telegram-Init-Data", "")
