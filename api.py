@@ -6,6 +6,7 @@ import os
 import secrets
 import string
 import time
+from collections import defaultdict, deque
 from urllib.parse import parse_qsl
 
 from aiohttp import web
@@ -33,7 +34,7 @@ def verify_init_data(init_data: str, bot_token: str, max_age: int = 86400) -> di
         raise ValueError("Telegram signature is missing")
 
     check_string = "\n".join(f"{key}={value}" for key, value in sorted(values.items()))
-    secret_key = hmac.new(bot_token.encode(), b"WebAppData", hashlib.sha256).digest()
+    secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
     expected_hash = hmac.new(secret_key, check_string.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected_hash, received_hash):
         raise ValueError("Telegram signature is invalid")
@@ -92,6 +93,33 @@ def create_app(bot_token: str) -> web.Application:
             return web.json_response({"error": "Внутренняя ошибка сервера."}, status=500)
 
     app.middlewares.append(errors)
+
+    # Per-user rolling window: maximum 10 API requests in 30 seconds.
+    request_windows = defaultdict(deque)
+
+    @web.middleware
+    async def rate_limit(request, handler):
+        if request.path.startswith("/api/"):
+            raw = request.headers.get("X-Telegram-Init-Data", "")
+            try:
+                identity = str(verify_init_data(raw, bot_token)["id"])
+            except ValueError:
+                identity = request.remote or "unknown"
+            now = time.monotonic()
+            window = request_windows[identity]
+            while window and now - window[0] >= 30:
+                window.popleft()
+            if len(window) >= 10:
+                retry = max(1, int(30 - (now - window[0])))
+                raise web.HTTPTooManyRequests(
+                    text=json.dumps({"error": "Слишком много запросов. Подожди немного."}, ensure_ascii=False),
+                    content_type="application/json",
+                    headers={"Retry-After": str(retry)},
+                )
+            window.append(now)
+        return await handler(request)
+
+    app.middlewares.append(rate_limit)
 
     def current_user(request):
         raw = request.headers.get("X-Telegram-Init-Data", "")
@@ -152,7 +180,7 @@ def create_app(bot_token: str) -> web.Application:
         parent = Genome.from_json(row["genome_json"])
         generation = int(row["generation"]) + 1
         next_genome = evolve(parent, code, generation)
-        result = mutate_artifact(code, next_genome.to_dict(), user["id"])
+        result = mutate_artifact(code, next_genome.to_dict(), user["id"], expected_generation=int(row["generation"]))
         if result is None:
             raise web.HTTPConflict(text='{"error":"Артефакт изменился. Обнови страницу."}',
                                    content_type="application/json")
