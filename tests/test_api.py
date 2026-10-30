@@ -16,7 +16,7 @@ class TelegramAuthTests(unittest.TestCase):
             "user": json.dumps({"id": 123456, "first_name": "Echo"}, separators=(",", ":")),
         }
         check_string = "\n".join(f"{key}={value}" for key, value in sorted(values.items()))
-        secret_key = hmac.new(token.encode(), b"WebAppData", hashlib.sha256).digest()
+        secret_key = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
         values["hash"] = hmac.new(secret_key, check_string.encode(), hashlib.sha256).hexdigest()
         return urlencode(values)
 
