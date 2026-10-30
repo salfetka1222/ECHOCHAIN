@@ -14,7 +14,7 @@ load_dotenv()
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command, CommandStart
-from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, WebAppInfo
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 from aiohttp import web
 
 from api import create_app
@@ -58,9 +58,13 @@ async def start(message: Message) -> None:
     if webapp_url:
         if not webapp_url.startswith("https://"):
             raise RuntimeError("WEBAPP_URL должен начинаться с https://")
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text="Открыть ECHOCHAIN", web_app=WebAppInfo(url=webapp_url))]],
-            resize_keyboard=True,
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[[
+                InlineKeyboardButton(
+                    text="🚀 Открыть ECHOCHAIN",
+                    web_app=WebAppInfo(url=webapp_url),
+                )
+            ]]
         )
     await message.answer(
         "🜂 <b>ECHOCHAIN</b>\n"
