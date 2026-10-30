@@ -12,10 +12,12 @@ from aiogram.types import (
     Message,
 )
 
-from database.database import (
-    add_pending_channel_post,
-    delete_pending_channel_post,
-    get_pending_channel_post,
+from database.database import add_pending_channel_post
+from database.channel_posts import (
+    claim_pending_channel_post,
+    finish_channel_post,
+    reject_pending_channel_post,
+    release_channel_post,
 )
 
 router = Router(name="channel_publisher")
@@ -34,6 +36,13 @@ def _channel_id() -> str:
     return os.getenv("CHANNEL_CHAT_ID", "").strip()
 
 
+def _approval_keyboard(post_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="Опубликовать", callback_data=f"chpost:approve:{post_id}"),
+        InlineKeyboardButton(text="Отклонить", callback_data=f"chpost:reject:{post_id}"),
+    ]])
+
+
 async def publish_channel_event(bot, text: str, important: bool = False) -> bool:
     """Publish a routine update or queue an important post for owner approval."""
     channel_id = _channel_id()
@@ -44,9 +53,7 @@ async def publish_channel_event(bot, text: str, important: bool = False) -> bool
     if not important:
         try:
             await bot.send_message(
-                chat_id=channel_id,
-                text=escape(text),
-                parse_mode="HTML",
+                chat_id=channel_id, text=escape(text), parse_mode="HTML",
                 disable_web_page_preview=True,
             )
             return True
@@ -59,27 +66,13 @@ async def publish_channel_event(bot, text: str, important: bool = False) -> bool
         logger.error("Important post was not queued: OWNER_ID is missing or invalid.")
         return False
 
-    post_id = add_pending_channel_post(text, owner_id)
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(
-            text="Опубликовать",
-            callback_data=f"chpost:approve:{post_id}",
-        ),
-        InlineKeyboardButton(
-            text="Отклонить",
-            callback_data=f"chpost:reject:{post_id}",
-        ),
-    ]])
+    post_id = add_pending_channel_post(text[:3500], owner_id)
     try:
         await bot.send_message(
             chat_id=owner_id,
-            text=(
-                "📝 <b>Публикация ожидает подтверждения</b>\n\n"
-                f"{escape(text)}\n\n"
-                f"Номер: <code>{post_id}</code>"
-            ),
-            parse_mode="HTML",
-            reply_markup=keyboard,
+            text=("📝 <b>Публикация ожидает подтверждения</b>\n\n"
+                  f"{escape(text[:3500])}\n\nНомер: <code>{post_id}</code>"),
+            parse_mode="HTML", reply_markup=_approval_keyboard(post_id),
             disable_web_page_preview=True,
         )
         return True
@@ -94,7 +87,6 @@ async def channel_status(message: Message) -> None:
     if not message.from_user or owner_id is None or message.from_user.id != owner_id:
         await message.answer("Эта команда доступна только владельцу проекта.")
         return
-
     channel_ready = bool(_channel_id())
     await message.answer(
         "📡 <b>Настройки канала</b>\n"
@@ -111,7 +103,6 @@ async def announce(message: Message) -> None:
     if not message.from_user or owner_id is None or message.from_user.id != owner_id:
         await message.answer("Эта команда доступна только владельцу проекта.")
         return
-
     text = (message.text or "").partition(" ")[2].strip()
     if not text:
         await message.answer("Использование: /announce Текст важного объявления")
@@ -121,23 +112,11 @@ async def announce(message: Message) -> None:
         return
 
     post_id = add_pending_channel_post(text[:3500], owner_id)
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(
-            text="Опубликовать",
-            callback_data=f"chpost:approve:{post_id}",
-        ),
-        InlineKeyboardButton(
-            text="Отклонить",
-            callback_data=f"chpost:reject:{post_id}",
-        ),
-    ]])
     await message.answer(
         "📝 <b>Черновик важной публикации</b>\n\n"
-        f"{escape(text[:3500])}\n\n"
-        f"Номер: <code>{post_id}</code>\n"
+        f"{escape(text[:3500])}\n\nНомер: <code>{post_id}</code>\n"
         "Публикация появится в канале только после подтверждения.",
-        parse_mode="HTML",
-        reply_markup=keyboard,
+        parse_mode="HTML", reply_markup=_approval_keyboard(post_id),
         disable_web_page_preview=True,
     )
 
@@ -153,42 +132,45 @@ async def handle_channel_approval(callback: CallbackQuery) -> None:
     if len(parts) != 3 or parts[1] not in {"approve", "reject"}:
         await callback.answer("Некорректная команда.")
         return
-
     try:
         post_id = int(parts[2])
     except ValueError:
         await callback.answer("Некорректный номер публикации.")
         return
 
-    post = get_pending_channel_post(post_id)
-    if post is None:
-        await callback.answer("Эта публикация уже обработана.")
-        return
-
-    if parts[1] == "reject":
-        delete_pending_channel_post(post_id)
+    action = parts[1]
+    if action == "reject":
+        if not reject_pending_channel_post(post_id):
+            await callback.answer("Публикация уже обрабатывается или обработана.")
+            return
         await callback.message.edit_reply_markup(reply_markup=None)
         await callback.answer("Публикация отклонена.")
         return
 
+    # Claim before sending: a second click cannot publish the same post again.
+    post = claim_pending_channel_post(post_id)
+    if post is None:
+        await callback.answer("Публикация уже обрабатывается или обработана.")
+        return
+
     channel_id = _channel_id()
     if not channel_id:
+        release_channel_post(post_id)
         await callback.answer("Не настроен CHANNEL_CHAT_ID.", show_alert=True)
         return
 
     try:
         sent = await callback.bot.send_message(
-            chat_id=channel_id,
-            text=escape(str(post["text"])),
-            parse_mode="HTML",
-            disable_web_page_preview=True,
+            chat_id=channel_id, text=escape(str(post["text"])),
+            parse_mode="HTML", disable_web_page_preview=True,
         )
     except Exception:
         logger.exception("Could not publish approved channel post.")
-        await callback.answer("Не удалось опубликовать. Проверь настройки канала.", show_alert=True)
+        release_channel_post(post_id)
+        await callback.answer("Не удалось опубликовать. Можно попробовать ещё раз.", show_alert=True)
         return
 
-    delete_pending_channel_post(post_id)
+    finish_channel_post(post_id)
     await callback.message.edit_reply_markup(reply_markup=None)
     await callback.answer("Опубликовано.")
     await callback.message.answer(
@@ -203,7 +185,6 @@ async def release(message: Message) -> None:
     if not message.from_user or owner_id is None or message.from_user.id != owner_id:
         await message.answer("Эта команда доступна только владельцу проекта.")
         return
-
     text = (message.text or "").partition(" ")[2].strip()
     if not text:
         await message.answer("Использование: /release Текст обычной новости разработки")
@@ -211,11 +192,8 @@ async def release(message: Message) -> None:
     if not _channel_id():
         await message.answer("Сначала настрой CHANNEL_CHAT_ID на хостинге.")
         return
-
     published = await publish_channel_event(
-        message.bot,
-        "🛠 НОВОСТИ РАЗРАБОТКИ\n\n" + text[:3500],
-        important=False,
+        message.bot, "🛠 НОВОСТИ РАЗРАБОТКИ\n\n" + text[:3500], important=False,
     )
     if published:
         await message.answer("✅ Обычная новость опубликована в канале.")
