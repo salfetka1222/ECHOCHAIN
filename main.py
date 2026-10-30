@@ -183,7 +183,7 @@ async def mutate(message: Message) -> None:
     parent_genome = Genome.from_json(row["genome_json"])
     next_generation = int(row["generation"]) + 1
     next_genome = evolve(parent_genome, code, next_generation)
-    result = mutate_artifact(code, next_genome.to_dict(), user.id)
+    result = mutate_artifact(code, next_genome.to_dict(), user.id, expected_generation=int(row["generation"]))
     if result is None:
         await message.answer("Артефакт изменился до сохранения мутации. Попробуй ещё раз.")
         return
