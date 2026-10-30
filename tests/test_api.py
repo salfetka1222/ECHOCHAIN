@@ -38,6 +38,14 @@ class TelegramAuthTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             verify_init_data("", "test-token")
 
+    def test_rejects_malformed_query_string(self):
+        with self.assertRaises(ValueError):
+            verify_init_data("not-a-query-string", "test-token")
+
+    def test_rejects_duplicate_fields(self):
+        with self.assertRaises(ValueError):
+            verify_init_data("auth_date=1&auth_date=2&hash=abc", "test-token")
+
 
 if __name__ == "__main__":
     unittest.main()
