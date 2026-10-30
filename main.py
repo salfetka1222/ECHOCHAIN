@@ -177,6 +177,9 @@ async def mutate(message: Message) -> None:
     if not row:
         await message.answer("Артефакт с таким кодом не найден.")
         return
+    if int(row["creator_id"]) != user.id:
+        await message.answer("Развивать можно только артефакт, созданный тобой.")
+        return
     parent_genome = Genome.from_json(row["genome_json"])
     next_generation = int(row["generation"]) + 1
     next_genome = evolve(parent_genome, code, next_generation)
