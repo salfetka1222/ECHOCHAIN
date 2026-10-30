@@ -18,6 +18,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, W
 from aiohttp import web
 
 from api import create_app
+from bot_rate_limit import TelegramRateLimitMiddleware
 
 from database.database import (
     add_event, create_artifact, create_colony, get_artifact, init_db,
@@ -28,6 +29,9 @@ from engine.world_engine import Genome, evolve
 from channel_publisher import router as channel_router
 
 dp = Dispatcher()
+telegram_rate_limit = TelegramRateLimitMiddleware(limit=10, window_seconds=30)
+dp.message.middleware(telegram_rate_limit)
+dp.callback_query.middleware(telegram_rate_limit)
 dp.include_router(channel_router)
 
 
