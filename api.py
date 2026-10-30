@@ -33,7 +33,7 @@ def verify_init_data(init_data: str, bot_token: str, max_age: int = 86400) -> di
         raise ValueError("Telegram signature is missing")
 
     check_string = "\n".join(f"{key}={value}" for key, value in sorted(values.items()))
-    secret_key = hmac.new(bot_token.encode(), b"WebAppData", hashlib.sha256).digest()
+    secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
     expected_hash = hmac.new(secret_key, check_string.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected_hash, received_hash):
         raise ValueError("Telegram signature is invalid")
