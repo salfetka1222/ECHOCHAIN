@@ -180,7 +180,7 @@ def create_app(bot_token: str) -> web.Application:
         parent = Genome.from_json(row["genome_json"])
         generation = int(row["generation"]) + 1
         next_genome = evolve(parent, code, generation)
-        result = mutate_artifact(code, next_genome.to_dict(), user["id"])
+        result = mutate_artifact(code, next_genome.to_dict(), user["id"], expected_generation=int(row["generation"]))
         if result is None:
             raise web.HTTPConflict(text='{"error":"Артефакт изменился. Обнови страницу."}',
                                    content_type="application/json")
