@@ -123,19 +123,34 @@ def list_artifacts(limit: int = 10) -> list[sqlite3.Row]:
         ).fetchall())
 
 
-def mutate_artifact(code: str, new_genome: dict[str, int], actor_id: int) -> tuple[int, str] | None:
+def mutate_artifact(
+    code: str, new_genome: dict[str, int], actor_id: int,
+    expected_generation: int | None = None,
+) -> tuple[int, str] | None:
+    """Atomically mutate only the creator's artifact at the expected generation."""
+    normalized = code.upper()
     with connect() as conn:
-        row = conn.execute("SELECT generation, name FROM artifacts WHERE code = ?", (code.upper(),)).fetchone()
-        if row is None:
+        row = conn.execute(
+            "SELECT generation, name, creator_id FROM artifacts WHERE code = ?",
+            (normalized,),
+        ).fetchone()
+        if row is None or int(row["creator_id"]) != actor_id:
             return None
-        generation = int(row["generation"]) + 1
-        conn.execute(
-            "UPDATE artifacts SET generation=?, genome_json=?, updated_at=CURRENT_TIMESTAMP WHERE code=?",
-            (generation, json.dumps(new_genome, ensure_ascii=False, sort_keys=True), code.upper()),
+        current_generation = int(row["generation"])
+        if expected_generation is not None and current_generation != expected_generation:
+            return None
+        generation = current_generation + 1
+        cursor = conn.execute(
+            "UPDATE artifacts SET generation=?, genome_json=?, updated_at=CURRENT_TIMESTAMP "
+            "WHERE code=? AND creator_id=? AND generation=?",
+            (generation, json.dumps(new_genome, ensure_ascii=False, sort_keys=True),
+             normalized, actor_id, current_generation),
         )
+        if cursor.rowcount != 1:
+            return None
         conn.execute(
             "INSERT INTO events(event_type, actor_id, artifact_code, payload_json) VALUES(?, ?, ?, ?)",
-            ("artifact_mutated", actor_id, code.upper(),
+            ("artifact_mutated", actor_id, normalized,
              json.dumps({"generation": generation, "genome": new_genome}, ensure_ascii=False, sort_keys=True)),
         )
         return generation, str(row["name"])
